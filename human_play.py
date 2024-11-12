@@ -7,15 +7,15 @@ Input your move in the format: 2,3
 """
 
 from __future__ import print_function
+
 import pickle
 
-from sympy.physics.units import current
-
 from game import Board, Game
-from mcts_pure import MCTSPlayer as MCTS_Pure
 from mcts_alphaZero import MCTSPlayer
+from mcts_pure import MCTSPlayer as MCTS_Pure
 from policy_value_net_numpy import PolicyValueNetNumpy
 from policy_value_net_pytorch import PolicyValueNet
+from sympy.physics.units import current
 
 
 # from policy_value_net import PolicyValueNet  # Theano and Lasagne
