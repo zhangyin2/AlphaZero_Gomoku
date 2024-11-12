@@ -4,6 +4,11 @@
 """
 
 from __future__ import print_function
+
+import os
+import curses
+import time
+
 import numpy as np
 
 
@@ -139,25 +144,32 @@ class Game(object):
         """Draw the board and show game info"""
         width = board.width
         height = board.height
+        # 延迟1秒
+        time.sleep(1)
+        # 清屏
+        os.system('clear')
 
-        print("Player", player1, "with X".rjust(3))
-        print("Player", player2, "with O".rjust(3))
+        print("Player", player1, "with ●".rjust(3))
+        print("Player", player2, "with ○".rjust(3))
         print()
         for x in range(width):
-            print("{0:8}".format(x), end='')
-        print('\r\n')
+            print("{0:3}".format(x), end='') if x > 0 else print(" {0:3}".format(x), end='')
+        print()
         for i in range(height - 1, -1, -1):
-            print("{0:4d}".format(i), end='')
+            print("{0:1d}|".format(i), end='')
             for j in range(width):
                 loc = i * width + j
                 p = board.states.get(loc, -1)
                 if p == player1:
-                    print('X'.center(8), end='')
+                    print('●'.center(3), end='')
                 elif p == player2:
-                    print('O'.center(8), end='')
+                    print('○'.center(3), end='')
                 else:
-                    print('_'.center(8), end='')
-            print('\r\n\r\n')
+                    print('·'.center(3), end='')
+            print("|")
+        for x in range(width):
+            print("{0:3}".format(x), end='') if x > 0 else print(" {0:3}".format(x), end='')
+        print()
 
     def start_play(self, player1, player2, start_player=0, is_shown=1):
         """start a game between two players"""
