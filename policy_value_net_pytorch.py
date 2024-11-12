@@ -74,7 +74,7 @@ class PolicyValueNet():
                                     weight_decay=self.l2_const)
 
         if model_file:
-            net_params = torch.load(model_file)
+            net_params = torch.load(model_file, weights_only=True)
             self.policy_value_net.load_state_dict(net_params)
 
     def policy_value(self, state_batch):

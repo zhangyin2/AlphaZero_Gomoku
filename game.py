@@ -89,34 +89,50 @@ class Board(object):
         self.last_move = move
 
     def has_a_winner(self):
-        width = self.width
-        height = self.height
-        states = self.states
-        n = self.n_in_row
-
-        moved = list(set(range(width * height)) - set(self.availables))
-        if len(moved) < self.n_in_row *2-1:
+        # 如果步数不足以形成获胜局面，直接返回
+        if len(self.availables) > self.width * self.height - self.n_in_row * 2 + 1:
             return False, -1
 
-        for m in moved:
-            h = m // width
-            w = m % width
-            player = states[m]
+        # 获取最后一步的落子位置和玩家
+        last_move = list(set(range(self.width * self.height)) - set(self.availables))[0]
+        player = self.states[last_move]
 
-            if (w in range(width - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n))) == 1):
-                return True, player
+        # 计算最后一步的坐标
+        h, w = last_move // self.width, last_move % self.width
 
-            if (h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * width, width))) == 1):
-                return True, player
+        # 定义检查方向
+        directions = [
+            (1, 0),  # 垂直向下
+            (0, 1),  # 水平向右
+            (1, 1),  # 右下对角
+            (1, -1)  # 左下对角
+        ]
 
-            if (w in range(width - n + 1) and h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * (width + 1), width + 1))) == 1):
-                return True, player
+        for dx, dy in directions:
+            count = 1  # 从1开始，包括当前落子
 
-            if (w in range(n - 1, width) and h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * (width - 1), width - 1))) == 1):
+            # 正向检查
+            for i in range(1, self.n_in_row):
+                new_x, new_y = h + i * dx, w + i * dy
+                if (0 <= new_x < self.height and
+                        0 <= new_y < self.width and
+                        self.states.get(new_x * self.width + new_y, -1) == player):
+                    count += 1
+                else:
+                    break
+
+            # 反向检查
+            for i in range(1, self.n_in_row):
+                new_x, new_y = h - i * dx, w - i * dy
+                if (0 <= new_x < self.height and
+                        0 <= new_y < self.width and
+                        self.states.get(new_x * self.width + new_y, -1) == player):
+                    count += 1
+                else:
+                    break
+
+            # 检查是否获胜
+            if count >= self.n_in_row:
                 return True, player
 
         return False, -1
@@ -145,7 +161,7 @@ class Game(object):
         width = board.width
         height = board.height
         # 延迟1秒
-        time.sleep(1)
+        # time.sleep(1)
         # 清屏
         os.system('clear')
 

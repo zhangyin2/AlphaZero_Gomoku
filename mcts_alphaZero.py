@@ -5,6 +5,7 @@ network to guide the tree search and evaluate the leaf nodes
 
 @author: Junxiao Song
 """
+import multiprocessing
 
 import numpy as np
 import copy
@@ -103,7 +104,7 @@ class MCTS(object):
         self._c_puct = c_puct
         self._n_playout = n_playout
 
-    def _playout(self, state):
+    def _playout(self, board):
         """Run a single playout from the root to the leaf, getting a value at
         the leaf and propagating it back through its parents.
         State is modified in-place, so a copy must be provided.
@@ -114,14 +115,14 @@ class MCTS(object):
                 break
             # Greedily select next move.
             action, node = node.select(self._c_puct)
-            state.do_move(action)
+            board.do_move(action)
 
         # Evaluate the leaf using a network which outputs a list of
         # (action, probability) tuples p and also a score v in [-1, 1]
         # for the current player.
-        action_probs, leaf_value = self._policy(state)
+        action_probs, leaf_value = self._policy(board)
         # Check for end of game.
-        end, winner = state.game_end()
+        end, winner = board.game_end()
         if not end:
             node.expand(action_probs)
         else:
@@ -130,21 +131,21 @@ class MCTS(object):
                 leaf_value = 0.0
             else:
                 leaf_value = (
-                    1.0 if winner == state.get_current_player() else -1.0
+                    1.0 if winner == board.get_current_player() else -1.0
                 )
 
         # Update value and visit count of nodes in this traversal.
         node.update_recursive(-leaf_value)
 
-    def get_move_probs(self, state, temp=1e-3):
+    def get_move_probs(self, board, temp=1e-3):
         """Run all playouts sequentially and return the available actions and
         their corresponding probabilities.
-        state: the current game state
+        board: the current game board
         temp: temperature parameter in (0, 1] controls the level of exploration
         """
         for n in range(self._n_playout):
-            state_copy = copy.deepcopy(state)
-            self._playout(state_copy)
+            board_copy = copy.deepcopy(board)
+            self._playout(board_copy)
 
         # calc the move probabilities based on visit counts at the root node
         act_visits = [(act, node._n_visits)
@@ -172,8 +173,9 @@ class MCTSPlayer(object):
     """AI player based on MCTS"""
 
     def __init__(self, policy_value_function,
-                 c_puct=5, n_playout=2000, is_selfplay=0):
-        self.mcts = MCTS(policy_value_function, c_puct, n_playout)
+                 c_puct=5, n_playout=2000, is_selfplay=0, is_parallel=False):
+        self.mcts = ParallelMCTS(policy_value_function, c_puct, n_playout) if is_parallel \
+            else MCTS(policy_value_function, c_puct, n_playout)
         self._is_selfplay = is_selfplay
 
     def set_player_ind(self, p):
@@ -216,3 +218,37 @@ class MCTSPlayer(object):
 
     def __str__(self):
         return "MCTS {}".format(self.player)
+
+
+class ParallelMCTS(MCTS):
+    def __init__(self, policy_value_fn, c_puct=5, n_playout=10000, n_workers=None):
+        """
+        扩展 MCTS 以支持并行模拟
+
+        Args:
+            policy_value_fn: 策略价值函数
+            c_puct: 探索参数
+            n_playout: 模拟总次数
+            n_workers: 并行工作进程数，默认为 CPU 核心数
+        """
+        super().__init__(policy_value_fn, c_puct, n_playout)
+        self._n_workers = n_workers or multiprocessing.cpu_count()
+
+    def get_move_probs(self, board, temp=1e-3):
+        """
+        并行执行蒙特卡洛模拟
+        """
+        with multiprocessing.Pool(processes=self._n_workers) as pool:
+            # 为每个工作进程创建独立的板副本
+            board_copies = [copy.deepcopy(board) for _ in range(self._n_playout)]
+
+            # 并行执行模拟
+            pool.map(self._playout, board_copies)
+
+        # 计算走法概率
+        act_visits = [(act, node._n_visits)
+                      for act, node in self._root._children.items()]
+        acts, visits = zip(*act_visits)
+        act_probs = softmax(1.0 / temp * np.log(np.array(visits) + 1e-10))
+
+        return acts, act_probs
