@@ -53,9 +53,9 @@ class Human(object):
 
 
 def run():
-    n = 5
-    width, height = 8, 8
-    model_file = 'best_policy_8_8_5.model'
+    n = 4
+    width, height = 6, 6
+    model_file = 'best_policy_6_6_4.model2'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
@@ -114,6 +114,25 @@ def run_combine():
         print('\n\rquit')
 
 
+def mcts_combine():
+    n = 4
+    width, height = 6, 6
+    try:
+        board = Board(width=width, height=height, n_in_row=n)
+        game = Game(board)
+
+        # ############### human VS AI ###################
+        # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
+
+        mcts_player_current = MCTS_Pure(c_puct=3, n_playout=200)
+        mcts_player = MCTS_Pure(c_puct=3, n_playout=2000)
+
+        game.start_play(mcts_player_current, mcts_player, start_player=0, is_shown=1)
+    except KeyboardInterrupt:
+        print('\n\rquit')
+
+
 if __name__ == '__main__':
-    run()
+    # run()
     # run_combine()
+    mcts_combine()
